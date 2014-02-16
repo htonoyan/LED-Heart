@@ -269,97 +269,40 @@ void changeColor(uint16_t numBytes)
 }
 
 void set_new_brightness( uint8_t* inner, uint8_t* mid, uint8_t* outer,
-                         uint8_t min_inner, uint8_t min_mid, uint8_t min_outer,
                          uint8_t direction )
 {
-    if( direction )
+    static uint8_t counter = 0;
+
+
+    if(direction)
     {
-        if( *inner < 100 )
-        {
-            *inner += 10;
-        }
-        else if( *mid < 100 )
-        {
-            if( *inner < 246 )
-            {
-                *inner += 10;
-            }
-            *mid += 10;
-        }
-        else if( *outer < 100 )
-        {
-            if( *inner < 246 )
-            {
-                *inner += 10;
-            }
-            if( *mid < 246 )
-            {
-                *mid += 10;
-            }
-            *outer += 10;
-        }
-        else
-        {
-            if( *inner < 246 )
-            {
-                *inner += 10;
-            }
-            if( *mid < 246 )
-            {
-                *mid += 10;
-            }
-            if( *outer < 246 )
-            {
-                *outer += 10;
-            }
-        }
+        if(counter < 255)
+            counter += 5;
     }
     else
     {
-        if( *outer > 100 )
-        {
-            *outer -= 10;
-        }
-        else if( *mid > 100 )
-        {
-            if( *outer > min_outer )
-                *outer -= 10;
-            else
-                *outer = min_outer;
-            *mid -= 10;
-        }
-        else if( *inner > 100 )
-        {
-            if( *outer > min_outer )
-                *outer -= 10;
-            else
-                *outer = min_outer;
-                
-            if( *mid > min_mid )
-                *mid -= 10;
-            else
-                *mid = min_mid;
-                
-            *inner -= 10;
-        }
-        else
-        {
-            if( *outer > min_outer)
-                *outer -= 10;
-            else
-                *outer = 0;
-                
-            if( *mid > min_mid)
-                *mid -= 10;
-            else
-                *mid = min_mid;
-                
-            if( *inner > min_inner)
-                *inner -= 10;
-            else
-                *inner = min_inner;
-        }
+        if(counter > 0)
+            counter -= 5;
     }
+
+    if( counter < 68 )
+        *inner = 3*counter + 50;
+    else
+        *inner = 255;
+
+    if( counter < 64 )
+        *mid = 0;
+    else if( counter < 128 )
+        *mid = (uint16_t)(counter)*4 - 256;
+    else
+        *mid = 255;
+
+    if( counter < 127 )
+        *outer = 0;
+    else if(counter < 192 )
+        *outer = (uint16_t)(counter)*4 - 512;
+    else
+        *outer = 255;
 }
 
 void set_pixel(uint8_t i, uint8_t G, uint8_t R, uint8_t B, uint8_t brightness )
@@ -374,7 +317,7 @@ ISR(TIMER0_COMPA_vect)
     static uint16_t counter = 0;
     static uint8_t state = 0;
     uint8_t i;
-    const uint16_t time_table[] = {4000, 4000};
+    const uint16_t time_table[] = {40, 4000};
     
     uint8_t inners[] = {6, 12, 17, 18, 19, 20, 21, 11},
             mids[] = {2, 5, 13, 16, 29, 28, 27, 26, 25, 22, 10, 7},
@@ -404,28 +347,18 @@ ISR(TIMER0_COMPA_vect)
             changeColor(105);
             break;
         case 1:
-            if( counter == 0 )
-            {
-                inner_brightness = 50;
-                mid_brightness = 0;
-                outer_brightness = 0;
-            }
+    // Pulsing
             set_new_brightness(&inner_brightness, &mid_brightness, &outer_brightness,
-                               50, 0, 0,
-                               (counter % 90) / 60);
+                               (counter % 120) / 80);
             
             for(i=0; i< sizeof(inners); i++)
-            {
                 set_pixel(inners[i], 0, 255, 50, inner_brightness);
-            }
+
             for(i=0; i< sizeof(mids); i++)
-            {
                 set_pixel(mids[i], 0, 255, 255, mid_brightness);
-            }
+
             for(i=0; i< sizeof(outers); i++)
-            {
                 set_pixel(outers[i], 160, 70, 230, outer_brightness);
-            }            
             
             counter++;
 
