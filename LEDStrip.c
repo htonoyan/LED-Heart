@@ -312,25 +312,80 @@ void set_pixel(uint8_t i, uint8_t G, uint8_t R, uint8_t B, uint8_t brightness )
     pixels[i*3 + 2] = ((uint16_t)(B*brightness))/255;
 }
 
+void animation_pulsing(uint16_t counter)
+{
+
+    uint8_t inner_brightness,
+            mid_brightness,
+            outer_brightness;
+ 
+    set_new_brightness(&inner_brightness, &mid_brightness, &outer_brightness,
+                       (counter % 120) / 80);
+    
+    for(i=0; i< sizeof(inners); i++)
+        set_pixel(inners[i], 0, 255, 50, inner_brightness);
+
+    for(i=0; i< sizeof(mids); i++)
+        set_pixel(mids[i], 0, 255, 255, mid_brightness);
+
+    for(i=0; i< sizeof(outers); i++)
+        set_pixel(outers[i], 160, 70, 230, outer_brightness);
+
+}
+
+uint8_t lfsr_next_random(uint8_t current)
+{
+    uint8_t bit;
+
+    bit = ((current >> 0) ^ (current >> 2) ^ (current >> 3) ^ (current >> 4)) & 1;
+    return (current >> 1) | (bit << 7);
+}
+
+void animation_twinkle(uint16_t counter)
+{
+    static uint8_t seed = 1;
+    static uint8_t random_pixel;
+
+    if(counter%150 == 0)
+    {
+        // start twinkle
+        seed = lfsr_next_random(seed);
+        random_pixel = 34*seed / 255;
+    }
+    else if(counter%150 < 30)
+    {
+        // ramp up to full brightness
+        // TODO: figure out increments
+        pixels[random_pixel] += ;
+        pixels[random_pixel + 1] += ;
+        pixels[random_pixel + 2] += ;
+    }
+    else if(counter%150 < 60)
+    {
+        // ramp down to 0
+        pixels[random_pixel] -= ;
+        pixels[random_pixel + 1] -= ;
+        pixels[random_pixel + 2] -= ;
+    }
+
+}
+
 ISR(TIMER0_COMPA_vect)
 {
     static uint16_t counter = 0;
     static uint8_t state = 0;
     uint8_t i;
-    const uint16_t time_table[] = {40, 4000};
+    const uint16_t time_table[] = {4000, 4000, 4000};
     
     uint8_t inners[] = {6, 12, 17, 18, 19, 20, 21, 11},
             mids[] = {2, 5, 13, 16, 29, 28, 27, 26, 25, 22, 10, 7},
             outers[] = {0, 3, 4, 14, 15, 30, 31, 32, 33, 34, 24, 23, 9, 8, 1};
-            
-    uint8_t inner_brightness,
-            mid_brightness,
-            outer_brightness;
-    
+
+
     switch (state)
     {
         case 0:
-        // colors spiraling outward
+            // colors spiraling outward
             if( counter == 0 )
             {
                 for (i=0; i< sizeof(pixels); i++)
@@ -347,27 +402,31 @@ ISR(TIMER0_COMPA_vect)
             changeColor(105);
             break;
         case 1:
-    // Pulsing
-            set_new_brightness(&inner_brightness, &mid_brightness, &outer_brightness,
-                               (counter % 120) / 80);
-            
-            for(i=0; i< sizeof(inners); i++)
-                set_pixel(inners[i], 0, 255, 50, inner_brightness);
-
-            for(i=0; i< sizeof(mids); i++)
-                set_pixel(mids[i], 0, 255, 255, mid_brightness);
-
-            for(i=0; i< sizeof(outers); i++)
-                set_pixel(outers[i], 160, 70, 230, outer_brightness);
-            
+            // Pulsing
             counter++;
-
+            animation_pulsing(counter);
+            if( counter == time_table[state] )
+            {
+                counter = 0;
+                state++;
+            }
+            break;
+        case 2:
+            // Twinkle
+            if( counter == 0 )
+            {
+                for (i=0; i< sizeof(pixels); i++)
+                {
+                    pixels[i] = ; // TODO: twinkle color
+                }
+            }
+            counter++;
+            animation_twinkle(counter);
             if( counter == time_table[state] )
             {
                 counter = 0;
                 state = 0;
             }
-            break;
     }
     dumpColor(105);
 }
