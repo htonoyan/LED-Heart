@@ -54,42 +54,42 @@ void initializeBoard(void)
 uint8_t pixels[105];
 
 uint8_t spiral_init[] PROGMEM = {
-120,0,255,
-130,0,255,
-250,0,255,
-110,0,255,
-100,0,255,
-240,0,255,
-255,0,170,
-255,0,250,
-140,0,255,
-0,0,255,
-150,0,255,
-255,0,240,
-255,0,180,
-230,0,255,
-90,0,255,
-80,0,255,
-220,0,255,
-255,0,190,
-255,0,200,
-255,0,210,
-255,0,220,
-255,0,230,
-160,0,255,
-10,0,255,
-20,0,255,
-170,0,255,
-180,0,255,
-190,0,255,
-200,0,255,
-210,0,255,
-70,0,255,
-60,0,255,
-50,0,255,
-40,0,255,
-30,0,255
-}; // 470 seems to be the max size of this array? 468 = 156 pixels * 3 bytes
+    120,0,255,
+    130,0,255,
+    250,0,255,
+    110,0,255,
+    100,0,255,
+    240,0,255,
+    255,0,170,
+    255,0,250,
+    140,0,255,
+    0,0,255,
+    150,0,255,
+    255,0,240,
+    255,0,180,
+    230,0,255,
+    90,0,255,
+    80,0,255,
+    220,0,255,
+    255,0,190,
+    255,0,200,
+    255,0,210,
+    255,0,220,
+    255,0,230,
+    160,0,255,
+    10,0,255,
+    20,0,255,
+    170,0,255,
+    180,0,255,
+    190,0,255,
+    200,0,255,
+    210,0,255,
+    70,0,255,
+    60,0,255,
+    50,0,255,
+    40,0,255,
+    30,0,255
+    };
 
 
 void dumpColor(uint16_t numBytes)
@@ -319,6 +319,12 @@ void animation_pulsing(uint16_t counter)
             mid_brightness,
             outer_brightness;
  
+    uint8_t inners[] = {6, 12, 17, 18, 19, 20, 21, 11},
+            mids[] = {2, 5, 13, 16, 29, 28, 27, 26, 25, 22, 10, 7},
+            outers[] = {0, 3, 4, 14, 15, 30, 31, 32, 33, 34, 24, 23, 9, 8, 1};
+
+    uint8_t i;
+
     set_new_brightness(&inner_brightness, &mid_brightness, &outer_brightness,
                        (counter % 120) / 80);
     
@@ -350,22 +356,31 @@ void animation_twinkle(uint16_t counter)
     {
         // start twinkle
         seed = lfsr_next_random(seed);
-        random_pixel = 34*seed / 255;
+        random_pixel = (uint16_t)(34)*seed / 255;
     }
-    else if(counter%150 < 30)
+    else if(counter%150 < 31)
     {
         // ramp up to full brightness
-        // TODO: figure out increments
-        pixels[random_pixel] += ;
-        pixels[random_pixel + 1] += ;
-        pixels[random_pixel + 2] += ;
+        if(pixels[random_pixel * 3] < 255) 
+            pixels[random_pixel * 3] += 8;
+
+        if(pixels[random_pixel*3 + 1] < 255) 
+            pixels[random_pixel*3 + 1] += 0;
+
+        if(pixels[random_pixel*3 + 2] < 255) 
+            pixels[random_pixel*3 + 2] += 6;
     }
-    else if(counter%150 < 60)
+    else if(counter%150 < 61)
     {
         // ramp down to 0
-        pixels[random_pixel] -= ;
-        pixels[random_pixel + 1] -= ;
-        pixels[random_pixel + 2] -= ;
+        if(pixels[random_pixel*3] > 0) 
+            pixels[random_pixel*3] -= 8;
+
+        if(pixels[random_pixel*3 + 1] > 0) 
+            pixels[random_pixel*3 + 1] -= 0;
+
+        if(pixels[random_pixel*3 + 2] > 0) 
+            pixels[random_pixel*3 + 2] -= 6;
     }
 
 }
@@ -375,13 +390,8 @@ ISR(TIMER0_COMPA_vect)
     static uint16_t counter = 0;
     static uint8_t state = 0;
     uint8_t i;
-    const uint16_t time_table[] = {4000, 4000, 4000};
+    const uint16_t time_table[] = {2000, 2000, 2000};
     
-    uint8_t inners[] = {6, 12, 17, 18, 19, 20, 21, 11},
-            mids[] = {2, 5, 13, 16, 29, 28, 27, 26, 25, 22, 10, 7},
-            outers[] = {0, 3, 4, 14, 15, 30, 31, 32, 33, 34, 24, 23, 9, 8, 1};
-
-
     switch (state)
     {
         case 0:
@@ -415,9 +425,11 @@ ISR(TIMER0_COMPA_vect)
             // Twinkle
             if( counter == 0 )
             {
-                for (i=0; i< sizeof(pixels); i++)
+                for (i=0; i< sizeof(pixels); i+=3)
                 {
-                    pixels[i] = ; // TODO: twinkle color
+                    pixels[i] = 15; // G
+                    pixels[i+1] = 255; // R
+                    pixels[i+2] = 75; // B
                 }
             }
             counter++;
