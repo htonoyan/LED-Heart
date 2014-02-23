@@ -1,7 +1,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
-#include <math.h>
 
 void xmitString ( char * string );
 
@@ -387,7 +386,7 @@ void animation_twinkle(uint16_t counter)
 
 }
 
-uint8_t abs_diff(uint8_t a, uint8_t b)
+uint8_t abs_diff(int8_t a, int8_t b)
 {
     if(a > b)
         return a - b;
@@ -395,104 +394,113 @@ uint8_t abs_diff(uint8_t a, uint8_t b)
         return b - a;
 }
 
-uint16_t distance(uint8_t x1, uint8_t x2, uint8_t y1, uint8_t y2)
+int16_t distance(int16_t x1, int16_t x2, int16_t y1, int16_t y2)
 {
-    return ((uint16_t)(abs_diff(x1, x2))*abs_diff(x1, x2)/100 +
-                (uint16_t)(abs_diff(y1, y2))*abs_diff(y1, y2)/100);
+    return (int32_t)(x1 - x2)*(x1 - x2)/100 +
+            (int32_t)(y1 - y2)*(y1 - y2)/100;
 }
 
 void animation_comets(uint16_t counter)
 {
 #define speed 1
-    static uint8_t ball_x = 100,
-                   ball_y = 20,
-                   direction_x = 0,
-                   direction_y = 0;
+    static int16_t ball_x = -126,
+                  ball_y = 0;
+    static int8_t velocity_x = 0,
+                  velocity_y = 0;
+    static int8_t goal_x = 5,
+                  goal_y = 1;
+
     uint8_t i, brightness;
     uint16_t ball_distance;
 
-    uint8_t pixel_coordinates[] = {
-        128,0,
-        102,41,
-        128,46,
-        154,41,
-        196,78,
-        158,85,
-        128,91,
-        98,85,
-        60,78,
-        18,121,
-        61,119,
-        101,121,
-        155,121,
-        195,119,
-        238,121,
-        255,168,
-        212,157,
-        170,147,
-        155,166,
-        128,149,
-        101,166,
-        86,147,
-        44,157,
-        0,168,
-        18,211,
-        61,191,
-        98,197,
-        128,191,
-        158,197,
-        195,191,
-        238,211,
-        196,231,
-        154,219,
-        102,219,
-        60,231
+    int8_t pixel_coordinates[] = {
+        0,-127,
+        -26,-87,
+        0,-82,
+        26,-87,
+        68,-50,
+        30,-43,
+        0,-37,
+        -30,-43,
+        -68,-50,
+        -110,-7,
+        -67,-9,
+        -27,-7,
+        27,-7,
+        67,-9,
+        110,-7,
+        127,40,
+        84,29,
+        42,19,
+        27,38,
+        0,21,
+        -27,38,
+        -42,19,
+        -84,29,
+        -127,40,
+        -110,83,
+        -67,63,
+        -30,69,
+        0,63,
+        30,69,
+        67,63,
+        110,83,
+        68,103,
+        26,91,
+        -26,91,
+        -68,103,
         };
 
-    if(direction_x)
+    if (ball_x < goal_x)
     {
-        if(ball_x < 255 - speed)
-            ball_x += speed;
-        else
-            direction_x = 0;
+        if (velocity_x < 5)
+            velocity_x++;
     }
     else
     {
-        if(ball_x > speed)
-            ball_x -= speed;
-        else
-            direction_x = 1;
+        if( velocity_x > -5)
+            velocity_x--;
     }
 
-    if(direction_y)
+    if (ball_y < goal_y)
     {
-        if(ball_y < 255 - speed)
-            ball_y += speed;
-        else
-            direction_y = 0;
+        if (velocity_y < 5)
+            velocity_y++;
     }
     else
     {
-        if(ball_y > speed)
-            ball_y -= speed;
-        else
-            direction_y = 1;
+        if( velocity_y > -5)
+            velocity_y--;
+    }
+
+        ball_x += velocity_x;
+        ball_y += velocity_y;
+
+    if ((ball_x - goal_x) < 5 && (ball_x - goal_x) > -5)
+    {
+        goal_x = lfsr_next_random(goal_x + 127) - 127; 
+        goal_y = lfsr_next_random(goal_y + 127) - 127; 
     }
 
     for(i=0; i<34; i++)
     {
         ball_distance = distance(ball_x, pixel_coordinates[i*2],
-                    ball_y, pixel_coordinates[i*2+1]);
-        if(ball_distance < 50)
+                                 ball_y, pixel_coordinates[i*2+1]);
+        if(ball_distance < 10)
         {
-              brightness = 255 - (uint16_t)(ball_distance*255)/50;
+              pixels[i*3] = pixels[i*3+1] =
+                            pixels[i*3+2] =
+                            255 - (ball_distance*255)/10;
         }
-        else
+        else if(pixels[i*3 + 1] > 0) 
         {
-            brightness = 0;
+            pixels[i*3 + 1]--;
+            pixels[i*3 + 2]--;
+            if(pixels[i*3] > 2)
+                pixels[i*3] -= 2;
+            else
+                pixels[i*3] = 0;
         }
-
-        set_pixel(i, 255, 255, 255, brightness);
     }
 }
 ISR(TIMER0_COMPA_vect)
@@ -500,10 +508,10 @@ ISR(TIMER0_COMPA_vect)
     static uint16_t counter = 0;
     static uint8_t state = 0;
     uint8_t i;
-    const uint16_t time_table[] = {100, 100, 100, 4000};
+    const uint16_t time_table[] = {4000, 4000, 4000, 4000};
     animation_comets(counter); 
     counter++;
-/*    switch (state)
+    switch (state)
     {
         case 0:
             // colors spiraling outward
@@ -532,26 +540,26 @@ ISR(TIMER0_COMPA_vect)
                 state++;
             }
             break;
+//        case 2:
+//            // Twinkle
+//            if( counter == 0 )
+//            {
+//                for (i=0; i< sizeof(pixels); i+=3)
+//                {
+//                    pixels[i] = 15; // G
+//                    pixels[i+1] = 255; // R
+//                    pixels[i+2] = 75; // B
+//                }
+//            }
+//            counter++;
+//            animation_twinkle(counter);
+//            if( counter == time_table[state] )
+//            {
+//                counter = 0;
+//                state++;
+//            }
+//            break;
         case 2:
-            // Twinkle
-            if( counter == 0 )
-            {
-                for (i=0; i< sizeof(pixels); i+=3)
-                {
-                    pixels[i] = 15; // G
-                    pixels[i+1] = 255; // R
-                    pixels[i+2] = 75; // B
-                }
-            }
-            counter++;
-            animation_twinkle(counter);
-            if( counter == time_table[state] )
-            {
-                counter = 0;
-                state++;
-            }
-            break;
-        case 3:
             // Bouncing ball
             counter++;
             animation_comets();
@@ -560,9 +568,8 @@ ISR(TIMER0_COMPA_vect)
                 counter = 0;
                 state=0;
             }
-            
     }
-*/
+
     dumpColor(105);
 }
 
