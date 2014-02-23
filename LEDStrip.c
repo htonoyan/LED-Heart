@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
+#include <math.h>
 
 void xmitString ( char * string );
 
@@ -42,7 +43,7 @@ void initializeBoard(void)
     // set up timer interrupts
     TCCR0A = _BV(WGM01); // CTC on OCR0A
     TCCR0B = _BV(CS02) | _BV(CS00); // prescale by 1024 (1 count ~8kHz)
-    OCR0A = 100; // divide by another 200 (~40Hz)
+    OCR0A = 100; // divide by another 100 (~80Hz)
     TIMSK0 = _BV(OCIE0A); // generate interrupt on match with A
     
     // set button interrupt
@@ -347,6 +348,7 @@ uint8_t lfsr_next_random(uint8_t current)
     return (current >> 1) | (bit << 7);
 }
 
+
 void animation_twinkle(uint16_t counter)
 {
     static uint8_t seed = 1;
@@ -385,14 +387,123 @@ void animation_twinkle(uint16_t counter)
 
 }
 
+uint8_t abs_diff(uint8_t a, uint8_t b)
+{
+    if(a > b)
+        return a - b;
+    else
+        return b - a;
+}
+
+uint16_t distance(uint8_t x1, uint8_t x2, uint8_t y1, uint8_t y2)
+{
+    return ((uint16_t)(abs_diff(x1, x2))*abs_diff(x1, x2)/100 +
+                (uint16_t)(abs_diff(y1, y2))*abs_diff(y1, y2)/100);
+}
+
+void animation_comets(uint16_t counter)
+{
+#define speed 1
+    static uint8_t ball_x = 100,
+                   ball_y = 20,
+                   direction_x = 0,
+                   direction_y = 0;
+    uint8_t i, brightness;
+    uint16_t ball_distance;
+
+    uint8_t pixel_coordinates[] = {
+        128,0,
+        102,41,
+        128,46,
+        154,41,
+        196,78,
+        158,85,
+        128,91,
+        98,85,
+        60,78,
+        18,121,
+        61,119,
+        101,121,
+        155,121,
+        195,119,
+        238,121,
+        255,168,
+        212,157,
+        170,147,
+        155,166,
+        128,149,
+        101,166,
+        86,147,
+        44,157,
+        0,168,
+        18,211,
+        61,191,
+        98,197,
+        128,191,
+        158,197,
+        195,191,
+        238,211,
+        196,231,
+        154,219,
+        102,219,
+        60,231
+        };
+
+    if(direction_x)
+    {
+        if(ball_x < 255 - speed)
+            ball_x += speed;
+        else
+            direction_x = 0;
+    }
+    else
+    {
+        if(ball_x > speed)
+            ball_x -= speed;
+        else
+            direction_x = 1;
+    }
+
+    if(direction_y)
+    {
+        if(ball_y < 255 - speed)
+            ball_y += speed;
+        else
+            direction_y = 0;
+    }
+    else
+    {
+        if(ball_y > speed)
+            ball_y -= speed;
+        else
+            direction_y = 1;
+    }
+
+    for(i=0; i<34; i++)
+    {
+        ball_distance = distance(ball_x, pixel_coordinates[i*2],
+                    ball_y, pixel_coordinates[i*2+1]);
+        if(ball_distance < 50)
+        {
+              brightness = 255 - (uint16_t)(ball_distance*255)/50;
+        }
+        else
+        {
+            brightness = 0;
+        }
+
+        set_pixel(i, 255, 255, 255, brightness);
+    }
+}
 ISR(TIMER0_COMPA_vect)
 {
     static uint16_t counter = 0;
     static uint8_t state = 0;
     uint8_t i;
-    const uint16_t time_table[] = {2000, 2000, 2000};
-    
-    switch (state)
+    const uint16_t time_table[] = {100, 100, 100, 4000};
+    animation_comets(counter); 
+    counter++;
+/*    switch (state)
     {
         case 0:
             // colors spiraling outward
@@ -437,9 +548,21 @@ ISR(TIMER0_COMPA_vect)
             if( counter == time_table[state] )
             {
                 counter = 0;
-                state = 0;
+                state++;
             }
+            break;
+        case 3:
+            // Bouncing ball
+            counter++;
+            animation_comets();
+            if( counter == time_table[state] )
+            {
+                counter = 0;
+                state=0;
+            }
+            
     }
+*/
     dumpColor(105);
 }
 
