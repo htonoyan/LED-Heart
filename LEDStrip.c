@@ -400,7 +400,7 @@ int16_t distance(int16_t x1, int16_t x2, int16_t y1, int16_t y2)
             (int32_t)(y1 - y2)*(y1 - y2)/100;
 }
 
-void animation_comets(uint16_t counter)
+void animation_comets()
 {
 #define speed 1
     static int16_t ball_x = -126,
