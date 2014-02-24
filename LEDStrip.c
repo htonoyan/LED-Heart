@@ -91,6 +91,43 @@ uint8_t spiral_init[] PROGMEM = {
     30,0,255
     };
 
+uint8_t spin_init[] PROGMEM = {
+    0,0,255,
+    0,17,255,
+    0,0,255,
+    17,0,255,
+    34,0,255,
+    21,0,255,
+    0,0,255,
+    0,21,255,
+    0,34,255,
+    0,255,204,
+    0,43,255,
+    0,32,255,
+    32,0,255,
+    255,0,213,
+    255,0,204,
+    255,0,187,
+    255,0,191,
+    255,0,191,
+    255,96,0,
+    128,255,0,
+    96,255,0,
+    0,255,191,
+    0,255,191,
+    0,255,187,
+    0,255,170,
+    0,255,170,
+    106,255,0,
+    128,255,0,
+    255,106,0,
+    255,85,0,
+    255,85,0,
+    255,102,0,
+    255,119,0,
+    119,255,0,
+    102,255,0
+    };
 
 void dumpColor(uint16_t numBytes)
 {
@@ -410,7 +447,7 @@ void animation_comets()
     static int8_t goal_x = 5,
                   goal_y = 1;
 
-    uint8_t i, brightness;
+    uint8_t i;
     uint16_t ball_distance;
 
     int8_t pixel_coordinates[] = {
@@ -503,14 +540,19 @@ void animation_comets()
         }
     }
 }
+
+void animation_spin()
+{
+
+
+}
+
 ISR(TIMER0_COMPA_vect)
 {
     static uint16_t counter = 0;
     static uint8_t state = 0;
     uint8_t i;
     const uint16_t time_table[] = {4000, 4000, 4000, 4000};
-    animation_comets(counter); 
-    counter++;
     switch (state)
     {
         case 0:
@@ -560,7 +602,33 @@ ISR(TIMER0_COMPA_vect)
 //            }
 //            break;
         case 2:
+            // colors spinning around
+            if( counter == 0 )
+            {
+                for (i=0; i< sizeof(pixels); i++)
+                {
+                    pixels[i] = pgm_read_byte(&(spin_init[i]));
+                }
+            }
+            counter++;
+            if( counter == time_table[state] )
+            {
+                counter = 0;
+                state++;
+            }
+            changeColor(105);
+            break;
+        case 3:
             // Bouncing ball
+            if( counter == 0 )
+            {
+                for (i=0; i< sizeof(pixels); i+=3)
+                {
+                    pixels[i] = 0; // G
+                    pixels[i+1] = 0; // R
+                    pixels[i+2] = 0; // B
+                }
+            }
             counter++;
             animation_comets();
             if( counter == time_table[state] )
@@ -568,6 +636,7 @@ ISR(TIMER0_COMPA_vect)
                 counter = 0;
                 state=0;
             }
+            break;
     }
 
     dumpColor(105);
